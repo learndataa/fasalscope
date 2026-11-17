@@ -1,0 +1,11 @@
+# secrets: never commit
+.streamlit/secrets.toml
+.env
+
+# raw photo datasets stay on your computer; only the extracted numbers are committed
+data/raw/
+
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store

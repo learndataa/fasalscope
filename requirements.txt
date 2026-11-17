@@ -1,0 +1,8 @@
+streamlit>=1.40
+bokeh==3.10.0
+streamlit-bokeh==3.10.1
+pandas>=2.2
+numpy>=1.26
+scikit-learn>=1.5
+pillow>=10.0
+pymongo>=4.6
