@@ -111,7 +111,7 @@ with tab1:
                                                "value": [feats[f] for f in FEATURES + [SHAPE]]}), hide_index=True)
                     st.caption(f"{100*cover:.0f}% of the photo looked like fruit. "
                                f"Unusualness score {nov:.1f} (99.5% of training photos score below {T.familiar.threshold:.1f}). "
-                               "Elongation is not used for ripeness, only for this check.")
+                               "Roundness is not used for ripeness, only for this check.")
                 key = f"saved_{hash(thumb)}"
                 if not st.session_state.get(key):
                     if st.button("Add my banana to the community dashboard", type="primary"):

@@ -18,7 +18,7 @@ from PIL import Image, ImageFilter, ImageOps
 # The six numbers every model in FasalScope uses (same order everywhere).
 FEATURES = ["pct_green", "pct_yellow", "pct_brown", "mean_hue", "mean_sat", "mean_val"]
 # One extra number that the ripeness models do NOT use: it's only for "does this look like a banana?"
-SHAPE = "elongation"
+SHAPE = "roundness"
 
 FEATURE_LABELS = {
     "pct_green": "% green",
@@ -27,7 +27,7 @@ FEATURE_LABELS = {
     "mean_hue": "average hue (°)",
     "mean_sat": "average saturation (%)",
     "mean_val": "average brightness (%)",
-    "elongation": "elongation (length ÷ width)",
+    "roundness": "roundness (1 = circle, banana ≈ 0.4)",
 }
 
 
@@ -100,19 +100,24 @@ def extract(img, max_side=256):
         "mean_hue": round(mean_hue, 2),
         "mean_sat": round(100 * float(sat.mean()), 2),
         "mean_val": round(100 * float(val.mean()), 2),
-        SHAPE: round(elongation(m), 2),
+        SHAPE: round(roundness(m), 2),
     }
     return feats, thumbnail_b64(im), coverage
 
 
-def elongation(mask):
+def roundness(mask):
     """
-    How long and thin is the fruit-coloured region? 1 = round, bigger = longer.
-    The spread of the pixels along their longest direction, divided by the spread across it
-    (the square root of the ratio of the two eigenvalues of their covariance matrix).
+    How round is the biggest fruit-coloured patch? 1 = a perfect circle; a banana is long and
+    curved, so usually 0.2 to 0.6. Formula: 4π × area ÷ perimeter² (the "circularity").
     """
-    ys, xs = np.nonzero(mask)
-    if len(xs) < 3:
-        return 1.0
-    lam = np.linalg.eigvalsh(np.cov(np.vstack([xs, ys]).astype(float)))
-    return float(np.sqrt(max(lam[1], 1e-9) / max(lam[0], 1e-9)))
+    from scipy import ndimage
+    m = ndimage.binary_opening(mask)
+    m = ndimage.binary_fill_holes(ndimage.binary_closing(m, iterations=2))
+    lab, n = ndimage.label(m)
+    if n == 0:
+        return 0.0
+    sizes = ndimage.sum(m, lab, range(1, n + 1))
+    big = lab == (int(np.argmax(sizes)) + 1)
+    area = big.sum()
+    perimeter = (big & ~ndimage.binary_erosion(big)).sum() * 1.12   # edge pixels, corrected for diagonals
+    return float(min(1.0, 4 * np.pi * area / max(perimeter, 1) ** 2))

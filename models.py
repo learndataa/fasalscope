@@ -88,7 +88,7 @@ NOVELTY_COLS = ["pct_green", "pct_yellow", "mean_hue", "mean_sat", "mean_val", S
                                                                                      # green + yellow + brown = 100)
 REASONS = {"pct_green": ("very green", "hardly any green"), "pct_yellow": ("very yellow", "hardly any yellow"),
            "mean_hue": ("unusual colour", "unusual colour"), "mean_sat": ("unusually vivid colour", "unusually dull colour"),
-           "mean_val": ("unusually bright", "unusually dark"), SHAPE: ("unusually long and thin", "too round for a banana")}
+           "mean_val": ("unusually bright", "unusually dark"), SHAPE: ("too round for a banana", "unusually thin")}
 
 
 class Familiarity:
@@ -107,6 +107,8 @@ class Familiarity:
             self.fits[lab] = LedoitWolf().fit(X)
             self.stats[lab] = (X.mean(0), X.std(0) + 1e-9)
         self.threshold = float(np.percentile(self.score_many(df[NOVELTY_COLS].to_numpy(float)), quantile))
+        # a simple shape rule as well: rounder than 99% of training photos
+        self.round_limit = float(np.percentile(df[SHAPE], 99))
 
     def score_many(self, X):
         return np.sqrt(np.min([f.mahalanobis(X) for f in self.fits.values()], axis=0))
@@ -120,4 +122,7 @@ class Familiarity:
         z = (x[0] - mu) / sd
         order = np.argsort(-np.abs(z))
         reasons = [REASONS[NOVELTY_COLS[i]][0 if z[i] > 0 else 1] for i in order[:2] if abs(z[i]) > 2]
-        return score > self.threshold, score, reasons
+        too_round = feats[SHAPE] > self.round_limit
+        if too_round and REASONS[SHAPE][0] not in reasons:
+            reasons.insert(0, REASONS[SHAPE][0])
+        return bool(score > self.threshold or too_round), score, reasons

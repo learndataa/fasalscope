@@ -130,7 +130,7 @@ md("""
 ### Is it even a banana?
 The models can only answer *ripe or unripe*. Show them a yellow rubber duck and they say "100% ripe"!
 So the app first asks a different question: **does this photo look like the training photos?**
-It measures how far the photo's numbers (plus one shape number, *elongation*) are from the nearest group of training photos.
+It measures how far the photo's numbers (plus one shape number, *roundness*: bananas are long and curved, a duck is round) are from the nearest group of training photos.
 """)
 code("""
 unusual, score, reasons = T.familiar.check(feats)
