@@ -135,7 +135,7 @@ It measures how far the photo's numbers (plus one shape number, *roundness*: ban
 code("""
 unusual, score, reasons = T.familiar.check(feats)
 print(f"unusualness {score:.1f}  (99.5% of training photos score below {T.familiar.threshold:.1f})")
-print("⚠ doesn't look like a training banana:" if unusual else "looks like a training banana", ", ".join(reasons))
+print("⚠ doesn't look like a training banana: " + ", ".join(reasons) if unusual else "✓ looks like a training banana")
 """)
 
 md("""
