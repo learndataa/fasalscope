@@ -22,7 +22,8 @@ from sklearn.svm import SVC
 from features import FEATURES
 
 LABELS = ["unripe", "ripe"]          # 0, 1
-PLOT_X, PLOT_Y = "pct_green", "pct_brown"   # the two features drawn on the dashboard
+PLOT_X, PLOT_Y = "pct_green", "pct_yellow"   # the two features drawn on the dashboard
+WEAK_FEATURE = "mean_val"                     # the single feature used by the weak demo model
 
 
 def make_models():
@@ -43,6 +44,8 @@ class Trained:
     road2d: tuple         # (w1, w2, b) of a 2-feature linear SVM in original units
     n_train: int
     n_test: int
+    weak_scores: np.ndarray = None   # a deliberately weak model (brightness only), for the threshold demo
+    weak_accuracy: float = None
 
 
 def train(df: pd.DataFrame, seed=42) -> Trained:
@@ -56,13 +59,21 @@ def train(df: pd.DataFrame, seed=42) -> Trained:
         scores[name] = m.predict_proba(Xte)[:, 1]
         acc[name] = accuracy_score(yte, m.predict(Xte))
 
+    # A deliberately weak model that sees only one number (average brightness).
+    # Its scores overlap, which makes the threshold trade-off easy to see.
+    j = FEATURES.index(WEAK_FEATURE)
+    weak = make_pipeline(StandardScaler(), LogisticRegression()).fit(Xtr[:, [j]], ytr)
+    weak_scores = weak.predict_proba(Xte[:, [j]])[:, 1]
+    weak_acc = accuracy_score(yte, weak.predict(Xte[:, [j]]))
+
     final = {name: m.fit(X, y) for name, m in make_models().items()}
 
     # A 2-feature SVM, only for drawing the "road" on the dashboard.
     X2 = df[[PLOT_X, PLOT_Y]].to_numpy(float)
     svm2 = SVC(kernel="linear", C=1.0).fit(X2, y)
     (w1, w2), b = svm2.coef_[0], svm2.intercept_[0]
-    return Trained(final, scores, yte, acc, (float(w1), float(w2), float(b)), len(ytr), len(yte))
+    return Trained(final, scores, yte, acc, (float(w1), float(w2), float(b)), len(ytr), len(yte),
+                   weak_scores, weak_acc)
 
 
 def predict(trained: Trained, feats: dict) -> dict:

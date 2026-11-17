@@ -58,11 +58,11 @@ It works without a database (uploads are kept until you stop the app).
 
 ## Honest limits
 
-The models only count colours, so lighting, background and banana variety all change the answer. FasalScope is a teaching project, not a certified agricultural tool. Uploads store six numbers, a 96-pixel thumbnail, a first name and the time; please photograph fruit only.
+The models only count colours, so lighting, background and banana variety all change the answer. The training photos show the same bananas many times on the same table, so test accuracy is optimistic (a good classroom example of data leakage). FasalScope is a teaching project, not a certified agricultural tool. Uploads store six numbers, a 96-pixel thumbnail, a first name and the time; please photograph fruit only.
 
 ## Credits and licences
 
 - **Code:** MIT licence © 2026 Dr. Nilesh P. Ingle. Reuse freely; keep the copyright notice.
-- **Banana photos:** *Ripe Unripe Banana Dataset*, Mendeley Data, CC BY 4.0 (only the extracted colour numbers are stored here). See `data/README.md`.
+- **Banana photos:** *Ripe Unripe Banana Dataset*, Mendeley Data, CC BY 4.0 (the extracted colour numbers, plus two example photos in `samples/`). See `data/README.md`.
 - **Rainfall:** India Meteorological Department subdivision rainfall 1901–2015, published on data.gov.in.
 - **Map tiles:** © OpenStreetMap contributors.

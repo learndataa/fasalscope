@@ -13,7 +13,7 @@ import base64
 import io
 
 import numpy as np
-from PIL import Image, ImageOps
+from PIL import Image, ImageFilter, ImageOps
 
 # The six numbers every model in FasalScope uses (same order everywhere).
 FEATURES = ["pct_green", "pct_yellow", "pct_brown", "mean_hue", "mean_sat", "mean_val"]
@@ -50,9 +50,18 @@ def thumbnail_b64(im, size=96):
 
 
 def banana_mask(hsv):
-    """Pixels that are coloured enough to be fruit, not a white/grey background."""
+    """
+    Which pixels belong to the banana?
+    1. Fruit-coloured pixels: yellow-to-green hue, clearly coloured, not too dark.
+       (Wooden tables, hands and white walls fall outside this range.)
+    2. Dark spots: dark pixels count only if they sit on or right next to fruit-coloured pixels.
+    """
+    h = hsv[..., 0] * 360.0
     s, v = hsv[..., 1], hsv[..., 2]
-    return (s > 0.22) & (v > 0.15)
+    fruit = (h >= 40) & (h < 170) & (s > 0.28) & (v > 0.25)
+    near = np.asarray(Image.fromarray((fruit * 255).astype("uint8")).filter(ImageFilter.MaxFilter(7))) > 0
+    dark = (v <= 0.35) & (s > 0.15) & near
+    return fruit | dark
 
 
 def extract(img, max_side=256):
@@ -73,9 +82,9 @@ def extract(img, max_side=256):
         return None, thumbnail_b64(im), coverage
 
     h, sat, val = h_deg[m], s[m], v[m]
-    green = (h >= 65) & (h < 170)
-    yellow = (h >= 38) & (h < 65) & (val >= 0.45)
-    brown = ~green & ~yellow  # orange-brown hues and dark yellow-brown patches
+    green = (h >= 65) & (h < 170) & (val > 0.25)
+    yellow = (h >= 38) & (h < 65) & (val > 0.35)
+    brown = ~green & ~yellow  # dark spots and brown patches
 
     # Hue is an angle, so average it with a little trigonometry (0° and 359° are neighbours).
     ang = np.deg2rad(h)

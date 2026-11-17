@@ -73,9 +73,15 @@ with tab1:
     with left:
         st.subheader("1 · Take or upload a photo")
         st.write("One banana, on a plain light background, in daylight. **Fruit only, no people.**")
-        src = st.radio("Photo source", ["Upload a file", "Use the camera"], horizontal=True, label_visibility="collapsed")
-        photo = (st.file_uploader("Banana photo", type=["jpg", "jpeg", "png", "webp"])
-                 if src == "Upload a file" else st.camera_input("Point at the banana"))
+        src = st.radio("Photo source", ["Upload a file", "Use the camera", "Try an example"], horizontal=True,
+                       label_visibility="collapsed")
+        if src == "Upload a file":
+            photo = st.file_uploader("Banana photo", type=["jpg", "jpeg", "png", "webp"])
+        elif src == "Use the camera":
+            photo = st.camera_input("Point at the banana")
+        else:
+            ex = st.selectbox("Example photo (from the training dataset)", ["ripe_example.jpg", "unripe_example.jpg"])
+            photo = str(Path(__file__).parent / "samples" / ex)
         name = st.text_input("Your first name (shown on the dashboard)", max_chars=30)
     with right:
         st.subheader("2 · What the models say")
@@ -146,7 +152,16 @@ with tab4:
     st.subheader("A · Every classifier has a dial")
     st.write("A model gives a score. **You** choose the threshold that turns the score into a decision. "
              "Drag it and watch the mistakes trade places.")
-    show(inspector.threshold_demo(T.test_scores["Logistic regression"], T.y_test), "threshold")
+    which = st.radio("Model to inspect", ["Weak model: sees only brightness", "Logistic regression: sees all six colour numbers"],
+                     horizontal=True)
+    if which.startswith("Weak"):
+        st.caption(f"One number is not enough: this model gets {100*T.weak_accuracy:.0f}% right at threshold 0.5, "
+                   "so the dial really matters.")
+        show(inspector.threshold_demo(T.weak_scores, T.y_test, "brightness-only model"), "threshold_weak")
+    else:
+        st.caption(f"With all six numbers the task is easy ({100*T.accuracy['Logistic regression']:.0f}% right), "
+                   "so almost any threshold works. Real problems are rarely this clean.")
+        show(inspector.threshold_demo(T.test_scores["Logistic regression"], T.y_test), "threshold_full")
     st.subheader("B · A model that memorises")
     st.write("A more flexible curve always fits the training data better. Does it predict the hidden years better?")
     r, _ = rain_data()

@@ -59,10 +59,10 @@ A computer can't "see" ripeness, but it can **count colours**. `features.extract
 
 `% green`, `% yellow`, `% brown/dark`, average hue, saturation and brightness.
 
-Run the next cell. In Colab, you can upload your own banana photo; otherwise it uses a made-up test banana.
+Run the next cell. In Colab, you can upload your own banana photo; press Cancel to use an example photo instead.
 """)
 code("""
-from PIL import Image, ImageDraw
+from PIL import Image
 photo = None
 try:
     from google.colab import files
@@ -71,22 +71,26 @@ try:
     photo = next(iter(up)) if up else None
 except Exception:
     pass
-if photo is None:  # a simple drawn banana: yellow with brown spots
-    im = Image.new("RGB", (640, 480), (245, 245, 240)); d = ImageDraw.Draw(im)
-    d.ellipse((120, 170, 520, 310), fill=(235, 200, 40))
-    for x in range(160, 500, 40):
-        d.ellipse((x, 220, x + 12, 232), fill=(90, 60, 20))
-    photo = "test_banana.jpg"; im.save(photo)
+if photo is None:
+    photo = "samples/ripe_example.jpg"   # try "samples/unripe_example.jpg" too
 
 feats, thumb, coverage = features.extract(photo)
 display(Image.open(photo).resize((240, 180)))
 print(f"{100*coverage:.0f}% of the photo looked like fruit")
+# See which pixels counted as banana (the rest is darkened):
+import numpy as np
+im = Image.open(photo).convert("RGB"); im.thumbnail((256, 256))
+m = features.banana_mask(np.asarray(im.convert("HSV"), float) / 255)
+ov = np.asarray(im).copy(); ov[~m] = (ov[~m] * 0.25).astype("uint8")
+display(Image.fromarray(ov))
 pd.Series(feats, name="value")
 """)
 
 md("""
 ## 3 · The training data
 Each row is one labelled photo from the *Ripe Unripe Banana Dataset* (Mendeley Data, CC BY 4.0), already turned into six numbers.
+
+**Be careful with the accuracy you'll see.** The dataset has many photos of the *same* bananas on the *same* table, so the hidden test photos look a lot like the training photos. Real phone photos will be harder. This problem is called **data leakage**.
 """)
 code("""
 df = pd.read_csv("data/banana_features.csv")
@@ -97,12 +101,12 @@ code("""
 from bokeh.models import ColumnDataSource, HoverTool
 colors = {"ripe": "#e0a020", "unripe": "#3f7d3a"}
 p = figure(height=420, width=640, title="Every training photo as a dot",
-           x_axis_label="% green", y_axis_label="% brown / dark", tools="pan,wheel_zoom,box_zoom,reset")
+           x_axis_label="% green", y_axis_label="% yellow", tools="pan,wheel_zoom,box_zoom,reset")
 for lab, g in df.groupby("label"):
-    p.scatter(g.pct_green, g.pct_brown, color=colors[lab], alpha=0.5, size=6, legend_label=lab)
+    p.scatter(g.pct_green, g.pct_yellow, color=colors[lab], alpha=0.5, size=6, legend_label=lab)
 show(p)
 """)
-md("**Try:** change `pct_brown` to `mean_hue` in the cell above. Which pair of features separates the classes best?")
+md("**Try:** change `pct_yellow` to `pct_brown` or `mean_val` in the cell above. Which pair of features separates the classes best?")
 
 md("""
 ## 4 · Three models
@@ -126,6 +130,11 @@ md("""
 ## 5 · The threshold dial
 Every model gives a **score**; *you* choose the threshold that turns it into a decision. Drag the slider: false alarms and misses trade places. (It's the same idea as the health-camp test in Unit IV.)
 """)
+code("""
+print(f"Weak model (brightness only): {100*T.weak_accuracy:.0f}% right at threshold 0.5")
+show(inspector.threshold_demo(T.weak_scores, T.y_test, "brightness-only model"))
+""")
+md("With all six numbers the problem is easy, so the dial hardly matters. Compare:")
 code("""show(inspector.threshold_demo(T.test_scores["Logistic regression"], T.y_test))""")
 
 md("""

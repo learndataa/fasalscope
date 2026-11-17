@@ -4,8 +4,8 @@ build_dataset.py: turn a folder of labelled banana photos into data/banana_featu
 FasalScope · © 2026 Dr. Nilesh P. Ingle · MIT licence
 
 Usage:  python build_dataset.py PATH/TO/PHOTOS
-The folder needs one sub-folder per label whose name contains "unripe" or "ripe",
-e.g. PHOTOS/Ripe/*.jpg and PHOTOS/Unripe/*.jpg (nested folders are fine).
+Labels come from file names (Raw_…/Unripe_… = unripe, Ripe_… = ripe) or, failing that,
+from folder names, e.g. PHOTOS/Ripe/*.jpg and PHOTOS/Unripe/*.jpg.
 """
 import sys
 from pathlib import Path
@@ -18,11 +18,12 @@ EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 
 
 def label_for(path: Path):
-    parts = [p.lower() for p in path.parts]
-    if any("unripe" in p for p in parts):
-        return "unripe"
-    if any("ripe" in p for p in parts):
-        return "ripe"
+    """Label from the file name first (Mendeley: Raw_Banana… / Ripe_Banana…), then from folder names."""
+    for part in [path.name.lower()] + [p.lower() for p in reversed(path.parts[:-1])]:
+        if "unripe" in part or part.startswith("raw"):
+            return "unripe"
+        if "ripe" in part:
+            return "ripe"
     return None
 
 
