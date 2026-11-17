@@ -24,22 +24,79 @@ Built by **Dr. Nilesh P. Ingle** for the course *1MTAIDS 33 Data Science* (Depar
 
 ## How the pieces connect
 
+```mermaid
+flowchart LR
+    phone["📱 Phone browser"] --> app["Streamlit app<br/>(app.py)"]
+    app <--> mongo[("MongoDB Atlas<br/>uploads")]
+    github["GitHub<br/>(this repo)"] -- "auto-deploys on every change" --> app
+    github -- "open notebook" --> colab["Google Colab<br/>explore and retrain"]
+    colab -. "read uploads" .-> mongo
 ```
-Phone browser ──► Streamlit app (app.py) ◄──► MongoDB Atlas (uploads)
-                        ▲
-GitHub (this repo) ─────┘ auto-deploys on every change
-        │
-        └──► Google Colab notebook (explore data, retrain, experiment)
+
+## How the code fits together
+
+`app.py` is only the page. It never does the data science itself: it asks the other files for answers and puts them on screen. **One file per job**, so you can change one without breaking the others.
+
+```mermaid
+flowchart TD
+    app["<b>app.py</b><br/>the page: tabs, buttons"]
+
+    subgraph engine["Engine: the data science"]
+        features["<b>features.py</b><br/>photo → 7 numbers"]
+        models["<b>models.py</b><br/>train, predict, duck check"]
+        db["<b>db.py</b><br/>save and read uploads"]
+    end
+
+    subgraph charts["Charts: Bokeh, one file per tab"]
+        community["<b>community.py</b><br/>Community dashboard"]
+        rain["<b>rain.py</b><br/>Rain Board"]
+        inspector["<b>inspector.py</b><br/>Model Inspector"]
+    end
+
+    csv[("data/*.csv<br/>bananas, rainfall, map")]
+    samples[("samples/<br/>2 example photos")]
+    mongo[("MongoDB Atlas<br/>live uploads")]
+
+    app --> features & models & db
+    app --> community & rain & inspector
+    features --> models
+    models --> csv
+    rain --> csv
+    db --> mongo
+    app --> samples
 ```
+
+### The journey of one banana photo
+
+| Step | File | Call | What comes back |
+|---|---|---|---|
+| 1 | `app.py` | `st.file_uploader` / `st.camera_input` | the photo |
+| 2 | `features.py` | `extract(photo)` | 7 numbers: % green, % yellow, % brown, hue, saturation, brightness, roundness (+ a tiny thumbnail) |
+| 3 | `models.py` | `predict(T, feats)` | P(ripe) from SVM, Naive Bayes and logistic regression |
+| 4 | `models.py` | `T.familiar.check(feats)` | "does this even look like a banana?" (the duck check) |
+| 5 | `db.py` | `make_record(...)` → `STORE.add(...)` | saved to MongoDB (or temporary memory) |
+| 6 | `community.py` | `dashboard(...)` | the new upload appears as a star on the Bokeh chart |
+
+### When does each part run?
+
+- **Once, when the app starts** (then remembered with `@st.cache_resource`): `models.train()` reads `data/banana_features.csv` and trains all three models plus the duck check in under a second; `db.get_store()` connects to MongoDB.
+- **On every click or upload:** Streamlit re-runs `app.py` from top to bottom, reusing the trained models and the database connection.
+- **Only in your browser:** the sliders in the Model Inspector are small JavaScript functions (`CustomJS`) inside the Bokeh charts, so dragging them never talks to the server.
+
+### Every file
 
 | File | Job |
 |---|---|
 | `app.py` | the page: tabs, photo upload, calls everything else |
-| `features.py` | photo → six colour numbers (% green, % yellow, % brown, hue, saturation, brightness) |
-| `models.py` | trains SVM, Naive Bayes and logistic regression when the app starts |
+| `features.py` | photo → 7 numbers (6 colour numbers for ripeness + roundness for the duck check) |
+| `models.py` | trains SVM, Naive Bayes, logistic regression and the "is it a banana?" check when the app starts |
 | `db.py` | saves and reads uploads (MongoDB if configured, otherwise temporary memory) |
 | `community.py`, `rain.py`, `inspector.py` | the Bokeh charts for each tab |
-| `build_dataset.py` | turns a folder of labelled photos into `data/banana_features.csv` |
+| `build_dataset.py` | one-time tool: turns a folder of labelled photos into `data/banana_features.csv` (the app never runs it) |
+| `notebooks/` | the Colab notebook; it imports the **same files** as the app |
+| `data/`, `samples/` | training numbers, rainfall, map positions, two example photos (credits in `data/README.md`) |
+| `.streamlit/` | app settings and the secrets *template* (the real secret lives only in Streamlit's settings) |
+| `.devcontainer/` | added by Streamlit; only used if you open the repo in GitHub Codespaces |
 
 ## Run it on your computer
 
