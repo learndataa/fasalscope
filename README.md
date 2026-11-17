@@ -7,7 +7,7 @@ Built by **Dr. Nilesh P. Ingle** for the course *1MTAIDS 33 Data Science* (Depar
 
 | | |
 |---|---|
-| ▶ **Live app** | *link added after deployment* |
+| ▶ **Live app** | **[fasalscope.streamlit.app](https://fasalscope.streamlit.app/)** (if it shows "This app has gone to sleep", click the button and wait about a minute) |
 | ▶ **Look under the hood in Colab** | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/learndataa/fasalscope/blob/main/notebooks/FasalScope_under_the_hood.ipynb) |
 | ▶ **Make your own copy** | click **Use this template** (top right), then deploy it on Streamlit (steps below) |
 
