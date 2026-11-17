@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from features import FEATURES, extract
+from features import FEATURES, SHAPE, extract
 
 EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 
@@ -38,7 +38,7 @@ def main(root, out="data/banana_features.csv", source="Mendeley: Ripe Unripe Ban
             skipped += 1
             continue
         rows.append({**feats, "label": lab, "file": f.name, "source": source})
-    df = pd.DataFrame(rows, columns=FEATURES + ["label", "file", "source"])
+    df = pd.DataFrame(rows, columns=FEATURES + [SHAPE, "label", "file", "source"])
     df.to_csv(out, index=False)
     print(f"{len(df)} photos -> {out} ({skipped} skipped)\n{df.label.value_counts().to_string()}")
 

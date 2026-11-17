@@ -7,7 +7,7 @@ Both demos are pure Bokeh: the slider runs a little JavaScript (CustomJS)
 inside the browser, so they also work in a saved HTML file with no server.
 """
 import numpy as np
-from bokeh.layouts import column, row
+from bokeh.layouts import column
 from bokeh.models import ColumnDataSource, CustomJS, Div, LabelSet, Slider, Span
 from bokeh.plotting import figure
 from sklearn.metrics import roc_curve
@@ -21,7 +21,7 @@ def threshold_demo(scores, y, model_name="Logistic regression", start=0.5):
                                 c=np.where(y == 1, "#e0a020", "#3f7d3a"),
                                 lab=np.where(y == 1, "really ripe", "really unripe")))
     strip = figure(height=230, sizing_mode="stretch_width", x_range=(-0.02, 1.02), y_range=(-0.6, 1.6),
-                   title=f"Each dot is a test banana, placed by its {model_name} score P(ripe)",
+                   title=f"Test bananas by {model_name} score",
                    x_axis_label="model's score: probability of ripe", tools="")
     strip.scatter("s", "yy", source=pts, color="c", size=8, alpha=0.8, legend_field="lab")
     strip.yaxis.ticker, strip.yaxis.major_label_overrides = [0, 1], {0: "unripe", 1: "ripe"}
@@ -33,7 +33,7 @@ def threshold_demo(scores, y, model_name="Logistic regression", start=0.5):
     cm = ColumnDataSource(dict(x=[0, 1, 0, 1], y=[1, 1, 0, 0], n=[0, 0, 0, 0],
                                t=["", "", "", ""], col=["#cfe6c7", "#f6c9c4", "#f6c9c4", "#cfe6c7"],
                                name=["true unripe", "false alarm", "missed", "true ripe"]))
-    box = figure(height=260, width=320, x_range=(-0.5, 1.5), y_range=(-0.5, 1.5), tools="",
+    box = figure(height=260, sizing_mode="stretch_width", x_range=(-0.5, 1.5), y_range=(-0.5, 1.5), tools="",
                  title="Confusion matrix", toolbar_location=None)
     box.rect("x", "y", 0.96, 0.96, source=cm, color="col")
     box.add_layout(LabelSet(x="x", y="y", text="t", source=cm, text_align="center", text_baseline="middle",
@@ -43,7 +43,7 @@ def threshold_demo(scores, y, model_name="Logistic regression", start=0.5):
     box.grid.visible = False
 
     fpr, tpr, thr = roc_curve(y, scores)
-    roc = figure(height=260, width=300, x_range=(0, 1), y_range=(0, 1.02), tools="", toolbar_location=None,
+    roc = figure(height=260, sizing_mode="stretch_width", x_range=(0, 1), y_range=(0, 1.02), tools="", toolbar_location=None,
                  title="ROC curve", x_axis_label="false-alarm rate", y_axis_label="ripe bananas caught")
     roc.line(fpr, tpr, line_width=2, color="#1f3b57")
     roc.line([0, 1], [0, 1], line_dash="dashed", color="#9fb3c8")
@@ -82,7 +82,7 @@ def threshold_demo(scores, y, model_name="Logistic regression", start=0.5):
     stats.text = (f"<b>Accuracy</b> {100*acc:.0f}% &nbsp;·&nbsp; <b>Precision</b> {100*prec:.0f}% "
                   f"(of bananas called ripe, how many were) &nbsp;·&nbsp; <b>Recall</b> {100*rec:.0f}% "
                   f"(of ripe bananas, how many we caught)")
-    return column(slider, stats, strip, row(box, roc), sizing_mode="stretch_width")
+    return column(slider, stats, strip, box, roc, sizing_mode="stretch_width")
 
 
 # ----------------------------------------------------------------- 2. overfitting
@@ -100,10 +100,10 @@ def overfit_demo(years, rain, name="Vidarbha", max_degree=12, seed=3):
         tr_err.append(float(np.sqrt(np.mean((np.polyval(c, x[~test]) - rain[~test]) ** 2))))
         te_err.append(float(np.sqrt(np.mean((np.polyval(c, x[test]) - rain[test]) ** 2))))
 
-    p = figure(height=300, sizing_mode="stretch_width", tools="", title=f"{name}: can we predict rain from the year?",
+    p = figure(height=300, sizing_mode="stretch_width", tools="", title=f"{name}: predict rain from the year?",
                x_axis_label="year", y_axis_label="annual rain (mm)", y_range=(rain.min() - 250, rain.max() + 250))
-    p.scatter(years[~test], rain[~test], size=7, color="#2f6db3", legend_label="training years (model sees these)")
-    p.scatter(years[test], rain[test], size=8, color="#e8735a", marker="triangle", legend_label="test years (hidden)")
+    p.scatter(years[~test], rain[~test], size=7, color="#2f6db3", legend_label="training years")
+    p.scatter(years[test], rain[test], size=8, color="#e8735a", marker="triangle", legend_label="hidden test years")
     curve = ColumnDataSource(dict(x=gyears, y=curves[0]))
     p.line("x", "y", source=curve, line_width=3, color="#1f3b57")
     p.legend.location = "top_left"
@@ -111,7 +111,7 @@ def overfit_demo(years, rain, name="Vidarbha", max_degree=12, seed=3):
     p.legend.background_fill_alpha = 0.6
 
     degs = list(range(1, max_degree + 1))
-    e = figure(height=300, sizing_mode="stretch_width", tools="", title="Error: training vs hidden test years",
+    e = figure(height=300, sizing_mode="stretch_width", tools="", title="Training vs test error",
                x_axis_label="model complexity (polynomial degree)", y_axis_label="typical error (mm)")
     e.line(degs, tr_err, line_width=2, color="#2f6db3", legend_label="training error")
     e.line(degs, te_err, line_width=2, color="#e8735a", legend_label="test error")
@@ -135,5 +135,5 @@ def overfit_demo(years, rain, name="Vidarbha", max_degree=12, seed=3):
     slider.js_on_change("value", cb)
     info.text = (f"<b>Degree 1</b>: training error {tr_err[0]:.0f} mm · test error {te_err[0]:.0f} mm. "
                  "A simple curve: training and test errors are close.")
-    layout = column(slider, info, row(p, e, sizing_mode="stretch_width"), sizing_mode="stretch_width")
+    layout = column(slider, info, p, e, sizing_mode="stretch_width")
     return layout, dict(train=tr_err, test=te_err)

@@ -19,7 +19,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
-from features import FEATURES
+from features import FEATURES, FEATURE_LABELS, SHAPE
 
 LABELS = ["unripe", "ripe"]          # 0, 1
 PLOT_X, PLOT_Y = "pct_green", "pct_yellow"   # the two features drawn on the dashboard
@@ -46,6 +46,7 @@ class Trained:
     n_test: int
     weak_scores: np.ndarray = None   # a deliberately weak model (brightness only), for the threshold demo
     weak_accuracy: float = None
+    familiar: "Familiarity" = None   # "does this look like my training photos?"
 
 
 def train(df: pd.DataFrame, seed=42) -> Trained:
@@ -73,10 +74,50 @@ def train(df: pd.DataFrame, seed=42) -> Trained:
     svm2 = SVC(kernel="linear", C=1.0).fit(X2, y)
     (w1, w2), b = svm2.coef_[0], svm2.intercept_[0]
     return Trained(final, scores, yte, acc, (float(w1), float(w2), float(b)), len(ytr), len(yte),
-                   weak_scores, weak_acc)
+                   weak_scores, weak_acc, Familiarity(df))
 
 
 def predict(trained: Trained, feats: dict) -> dict:
     """name -> probability that the banana is ripe."""
     x = np.array([[feats[f] for f in FEATURES]], float)
     return {name: float(m.predict_proba(x)[0, 1]) for name, m in trained.models.items()}
+
+
+# ------------------------------------------------------------------ "is this even a banana?"
+NOVELTY_COLS = ["pct_green", "pct_yellow", "mean_hue", "mean_sat", "mean_val", SHAPE]   # (% brown is left out:
+                                                                                     # green + yellow + brown = 100)
+REASONS = {"pct_green": ("very green", "hardly any green"), "pct_yellow": ("very yellow", "hardly any yellow"),
+           "mean_hue": ("unusual colour", "unusual colour"), "mean_sat": ("unusually vivid colour", "unusually dull colour"),
+           "mean_val": ("unusually bright", "unusually dark"), SHAPE: ("unusually long and thin", "too round for a banana")}
+
+
+class Familiarity:
+    """
+    How far is a new photo from the training photos? We measure the distance to the nearest class
+    (ripe or unripe) in a way that allows for how much each number usually varies and for numbers
+    that move together (the Mahalanobis distance). The cut-off is set so that 99.5% of the
+    training photos count as familiar.
+    """
+
+    def __init__(self, df, quantile=99.5):
+        from sklearn.covariance import LedoitWolf
+        self.fits, self.stats = {}, {}
+        for lab, g in df.groupby("label"):
+            X = g[NOVELTY_COLS].to_numpy(float)
+            self.fits[lab] = LedoitWolf().fit(X)
+            self.stats[lab] = (X.mean(0), X.std(0) + 1e-9)
+        self.threshold = float(np.percentile(self.score_many(df[NOVELTY_COLS].to_numpy(float)), quantile))
+
+    def score_many(self, X):
+        return np.sqrt(np.min([f.mahalanobis(X) for f in self.fits.values()], axis=0))
+
+    def check(self, feats):
+        """Return (unusual: bool, score: float, reasons: list of short phrases)."""
+        x = np.array([[feats[c] for c in NOVELTY_COLS]], float)
+        score = float(self.score_many(x)[0])
+        nearest = min(self.fits, key=lambda k: self.fits[k].mahalanobis(x)[0])
+        mu, sd = self.stats[nearest]
+        z = (x[0] - mu) / sd
+        order = np.argsort(-np.abs(z))
+        reasons = [REASONS[NOVELTY_COLS[i]][0 if z[i] > 0 else 1] for i in order[:2] if abs(z[i]) > 2]
+        return score > self.threshold, score, reasons

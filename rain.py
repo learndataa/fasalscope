@@ -48,7 +48,7 @@ def map_figure(tab, selected=None, height=520):
         mean_r=tab["mean"].round(0), sd_r=tab["sd"].round(0), cv_r=tab["cv"].round(0)))
     p = figure(x_axis_type="mercator", y_axis_type="mercator", height=height, sizing_mode="stretch_width",
                x_range=(7.3e6, 1.08e7), y_range=(6.0e5, 4.3e6), tools="pan,wheel_zoom,reset",
-               active_scroll="wheel_zoom", title="Average annual rain (circle size) and deficient years (colour)")
+               active_scroll="wheel_zoom", title="Size = average rain · colour = deficient years")
     p.add_tile("OpenStreetMap Mapnik")
     cmap = LinearColorMapper(palette=Viridis256[::-1], low=0, high=float(tab["deficient"].max()))
     r = p.scatter("mx", "my", size="radius", source=src, fill_color={"field": "deficient", "transform": cmap},
@@ -73,7 +73,7 @@ def trend_figure(rain, sub, name, years=(1901, 2015), height=320):
     p.line("YEAR", "ANNUAL", source=src, color="#9fb3c8", line_width=1.5, legend_label="each year")
     p.line("YEAR", "roll", source=src, color="#1f3b57", line_width=3, legend_label="10-year average")
     bad = ColumnDataSource(g[g.status == "deficient"])
-    dots = p.scatter("YEAR", "ANNUAL", source=bad, size=8, color="#d6303c", legend_label="deficient year (< 80% of normal)")
+    dots = p.scatter("YEAR", "ANNUAL", source=bad, size=8, color="#d6303c", legend_label="deficient year")
     p.add_layout(Span(location=normal, dimension="width", line_dash="dashed", line_color="#5b7186"))
     p.add_tools(HoverTool(renderers=[dots], tooltips=[("Year", "@YEAR"), ("Rain", "@ANNUAL{0,0} mm")]))
     p.legend.location = "top_left"
@@ -86,7 +86,7 @@ def monthly_figure(rain, sub, name, height=320):
     src = ColumnDataSource(dict(m=[m.title() for m in MONTHS], v=g.round(0).values,
                                 c=["#2f6db3" if m in ("JUN", "JUL", "AUG", "SEP") else "#b8c7d6" for m in MONTHS]))
     p = figure(x_range=[m.title() for m in MONTHS], height=height, sizing_mode="stretch_width",
-               title=f"{name}: average rain by month (monsoon in blue)", y_axis_label="mm", tools="save")
+               title=f"{name}: rain by month (monsoon in blue)", y_axis_label="mm", tools="save")
     p.vbar(x="m", top="v", width=0.8, color="c", source=src)
     p.add_tools(HoverTool(tooltips=[("Month", "@m"), ("Average", "@v{0,0} mm")]))
     p.xgrid.visible = False

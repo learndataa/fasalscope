@@ -17,6 +17,8 @@ from PIL import Image, ImageFilter, ImageOps
 
 # The six numbers every model in FasalScope uses (same order everywhere).
 FEATURES = ["pct_green", "pct_yellow", "pct_brown", "mean_hue", "mean_sat", "mean_val"]
+# One extra number that the ripeness models do NOT use: it's only for "does this look like a banana?"
+SHAPE = "elongation"
 
 FEATURE_LABELS = {
     "pct_green": "% green",
@@ -25,6 +27,7 @@ FEATURE_LABELS = {
     "mean_hue": "average hue (°)",
     "mean_sat": "average saturation (%)",
     "mean_val": "average brightness (%)",
+    "elongation": "elongation (length ÷ width)",
 }
 
 
@@ -97,5 +100,19 @@ def extract(img, max_side=256):
         "mean_hue": round(mean_hue, 2),
         "mean_sat": round(100 * float(sat.mean()), 2),
         "mean_val": round(100 * float(val.mean()), 2),
+        SHAPE: round(elongation(m), 2),
     }
     return feats, thumbnail_b64(im), coverage
+
+
+def elongation(mask):
+    """
+    How long and thin is the fruit-coloured region? 1 = round, bigger = longer.
+    The spread of the pixels along their longest direction, divided by the spread across it
+    (the square root of the ratio of the two eigenvalues of their covariance matrix).
+    """
+    ys, xs = np.nonzero(mask)
+    if len(xs) < 3:
+        return 1.0
+    lam = np.linalg.eigvalsh(np.cov(np.vstack([xs, ys]).astype(float)))
+    return float(np.sqrt(max(lam[1], 1e-9) / max(lam[0], 1e-9)))

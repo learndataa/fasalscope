@@ -20,7 +20,7 @@ import inspector
 import models
 import rain
 from db import get_store, make_record
-from features import FEATURES, FEATURE_LABELS, extract
+from features import FEATURES, FEATURE_LABELS, SHAPE, extract
 
 DATA = Path(__file__).parent / "data"
 CREDIT = ("Built by **Dr. Nilesh P. Ingle** · [LinkedIn](https://www.linkedin.com/in/nileshingle/) · "
@@ -95,19 +95,27 @@ with tab1:
                 probs = models.predict(T, feats)
                 avg = sum(probs.values()) / len(probs)
                 verdict = "ripe" if avg >= 0.5 else "unripe"
+                unusual, nov, reasons = T.familiar.check(feats)
                 st.image(photo, width=220)
+                if unusual:
+                    why = f" ({', '.join(reasons)})" if reasons else ""
+                    st.warning(f"⚠️ **This doesn't look like the bananas I was trained on**{why}. "
+                               "The models below can only answer *ripe or unripe*, never *not a banana*, "
+                               "so treat their verdict as a guess.")
                 st.markdown(f"### Verdict: **{verdict.upper()}**  ({100*avg:.0f}% average chance of ripe)")
                 st.dataframe(pd.DataFrame({"model": list(probs), "chance of ripe": [f"{100*p:.0f}%" for p in probs.values()],
                                            "test accuracy": [f"{100*T.accuracy[m]:.0f}%" for m in probs]}),
                              hide_index=True, use_container_width=True)
                 with st.expander("The numbers the models saw"):
-                    st.dataframe(pd.DataFrame({"feature": [FEATURE_LABELS[f] for f in FEATURES],
-                                               "value": [feats[f] for f in FEATURES]}), hide_index=True)
-                    st.caption(f"{100*cover:.0f}% of the photo looked like fruit.")
+                    st.dataframe(pd.DataFrame({"feature": [FEATURE_LABELS[f] for f in FEATURES + [SHAPE]],
+                                               "value": [feats[f] for f in FEATURES + [SHAPE]]}), hide_index=True)
+                    st.caption(f"{100*cover:.0f}% of the photo looked like fruit. "
+                               f"Unusualness score {nov:.1f} (99.5% of training photos score below {T.familiar.threshold:.1f}). "
+                               "Elongation is not used for ripeness, only for this check.")
                 key = f"saved_{hash(thumb)}"
                 if not st.session_state.get(key):
                     if st.button("Add my banana to the community dashboard", type="primary"):
-                        STORE.add(make_record(name, feats, probs, verdict, thumb))
+                        STORE.add(make_record(name, feats, probs, verdict, thumb, unusual=unusual))
                         st.session_state[key] = True
                         st.success("Added! Open the Community dashboard tab.")
                 else:

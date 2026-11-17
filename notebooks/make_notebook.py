@@ -127,6 +127,18 @@ for name, s in T.test_scores.items():
 """)
 
 md("""
+### Is it even a banana?
+The models can only answer *ripe or unripe*. Show them a yellow rubber duck and they say "100% ripe"!
+So the app first asks a different question: **does this photo look like the training photos?**
+It measures how far the photo's numbers (plus one shape number, *elongation*) are from the nearest group of training photos.
+""")
+code("""
+unusual, score, reasons = T.familiar.check(feats)
+print(f"unusualness {score:.1f}  (99.5% of training photos score below {T.familiar.threshold:.1f})")
+print("⚠ doesn't look like a training banana:" if unusual else "looks like a training banana", ", ".join(reasons))
+""")
+
+md("""
 ## 5 · The threshold dial
 Every model gives a **score**; *you* choose the threshold that turns it into a decision. Drag the slider: false alarms and misses trade places. (It's the same idea as the health-camp test in Unit IV.)
 """)

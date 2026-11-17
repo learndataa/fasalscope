@@ -64,12 +64,13 @@ def get_store(secrets=None):
         return MemoryStore(), f"Couldn't reach MongoDB ({type(e).__name__}); using temporary memory."
 
 
-def make_record(name, feats, probs, verdict, thumb, user_label=None):
+def make_record(name, feats, probs, verdict, thumb, user_label=None, unusual=False):
     return {
         "created_at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "name": (name or "anonymous").strip()[:30],
         "user_label": user_label,
         "verdict": verdict,
+        "unusual": bool(unusual),
         **{f: feats[f] for f in feats},
         **{"p_" + k.lower().replace(" ", "_"): round(v, 4) for k, v in probs.items()},
         "thumb": thumb,
